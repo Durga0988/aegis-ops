@@ -1,0 +1,123 @@
+# =============================================================================
+# Aegis-Ops: Self-Healing GitHub Action  (Stage 4 of the Architecture)
+# =============================================================================
+# Triggered by the AI Agent via GitHub REST API (repository_dispatch).
+# Receives the AI's recommended action and executes the appropriate fix:
+#   - scale_up:   Increase pod replicas or memory limits
+#   - rollback:   Roll back to the previous stable image tag
+#   - restart:    Restart the deployment
+# =============================================================================
+
+name: "Aegis-Ops Self-Healing Action"
+
+on:
+  repository_dispatch:
+    types:
+      - self-healing
+      - scale-up
+      - rollback
+      - restart-pods
+
+env:
+  HELM_CHART_PATH: helm/aegis-app
+
+jobs:
+  self-heal:
+    name: "🩹 Auto-Recovery: ${{ github.event.action }}"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Display Healing Context
+        run: |
+          echo "============================================"
+          echo " AEGIS-OPS SELF-HEALING TRIGGERED"
+          echo "============================================"
+          echo "Action Type : ${{ github.event.action }}"
+          echo "Alert Name  : ${{ github.event.client_payload.alert_name }}"
+          echo "Severity    : ${{ github.event.client_payload.severity }}"
+          echo "Root Cause  : ${{ github.event.client_payload.root_cause }}"
+          echo "AI Decision : ${{ github.event.client_payload.action }}"
+          echo "Timestamp   : ${{ github.event.client_payload.timestamp }}"
+          echo "============================================"
+
+      # ---- Action: Scale Up (increase memory limits / replicas) ----
+      - name: "🔼 Scale Up – Increase Resources"
+        if: github.event.client_payload.action == 'scale_up'
+        run: |
+          echo "Applying scale-up remediation..."
+
+          # Increase memory limit in Helm values
+          CURRENT_MEM=$(grep "memory:" ${{ env.HELM_CHART_PATH }}/values.yaml | head -1 | awk '{print $2}' | tr -d '"')
+          echo "Current memory limit: ${CURRENT_MEM}"
+
+          # Update memory limit to 512Mi
+          sed -i 's/memory: "256Mi"/memory: "512Mi"/g' ${{ env.HELM_CHART_PATH }}/values.yaml
+
+          # Increase replicas
+          sed -i 's/replicaCount: [0-9]*/replicaCount: 3/g' ${{ env.HELM_CHART_PATH }}/values.yaml
+
+          echo "Updated memory limit to 512Mi and replicas to 3"
+          cat ${{ env.HELM_CHART_PATH }}/values.yaml
+
+      # ---- Action: Rollback to previous stable version ----
+      - name: "⏪ Rollback – Revert to Previous Stable Tag"
+        if: github.event.client_payload.action == 'rollback'
+        run: |
+          echo "Applying rollback remediation..."
+
+          # Get the previous stable tag from client payload or use 'stable'
+          STABLE_TAG="${{ github.event.client_payload.stable_tag }}"
+          STABLE_TAG="${STABLE_TAG:-stable}"
+
+          sed -i "s|tag:.*|tag: \"${STABLE_TAG}\"|g" ${{ env.HELM_CHART_PATH }}/values.yaml
+          echo "Rolled back image tag to: ${STABLE_TAG}"
+          cat ${{ env.HELM_CHART_PATH }}/values.yaml
+
+      # ---- Action: Restart deployment ----
+      - name: "🔄 Restart – Rolling Restart"
+        if: github.event.client_payload.action == 'restart'
+        run: |
+          echo "Applying restart remediation..."
+          # Add a restart annotation to trigger a rolling restart
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          # Update the restartedAt annotation in deployment template
+          sed -i "s|restartedAt:.*|restartedAt: \"${TIMESTAMP}\"|g" \
+            ${{ env.HELM_CHART_PATH }}/templates/deployment.yaml
+          echo "Added restart annotation: ${TIMESTAMP}"
+
+      # ---- Commit the auto-recovery changes ----
+      - name: Commit Auto-Recovery Changes
+        run: |
+          git config user.name "aegis-ops-healer"
+          git config user.email "aegis-ops-healer@users.noreply.github.com"
+
+          git add -A
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+
+          COMMIT_MSG="fix(auto-heal): ${{ github.event.client_payload.action }} – ${{ github.event.client_payload.root_cause }}"
+          git commit -m "${COMMIT_MSG}"
+          git push
+
+          echo "### 🩹 Self-Healing Commit Pushed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Action | \`${{ github.event.client_payload.action }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Root Cause | ${{ github.event.client_payload.root_cause }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Alert | ${{ github.event.client_payload.alert_name }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Log Recovery Event
+        run: |
+          echo "============================================"
+          echo " AUTO-RECOVERY COMPLETE"
+          echo "============================================"
+          echo "The CI/CD pipeline will now re-deploy the"
+          echo "updated Helm chart with the healing changes."
+          echo "============================================"

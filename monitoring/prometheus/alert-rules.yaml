@@ -1,0 +1,109 @@
+# =============================================================================
+# Prometheus Alert Rules for Aegis-Ops
+# =============================================================================
+# These rules define the conditions under which alerts are fired.
+# When an alert fires, Alertmanager sends a webhook POST to the AI Agent.
+# =============================================================================
+
+groups:
+  - name: aegis-ops-application
+    rules:
+      # ---- Memory Leak Detection ----
+      - alert: HighMemoryUsage
+        expr: aegis_app_memory_usage_bytes > 200 * 1024 * 1024
+        for: 1m
+        labels:
+          severity: warning
+          team: devops
+        annotations:
+          summary: "High memory usage detected on {{ $labels.pod }}"
+          description: >
+            Pod {{ $labels.pod }} in namespace {{ $labels.namespace }}
+            is consuming {{ $value | humanize1024 }}B of memory,
+            which exceeds the 200 MB threshold. Possible memory leak.
+          runbook_url: "https://aegis-ops.dev/runbooks/high-memory"
+
+      - alert: CriticalMemoryUsage
+        expr: aegis_app_memory_usage_bytes > 400 * 1024 * 1024
+        for: 30s
+        labels:
+          severity: critical
+          team: devops
+        annotations:
+          summary: "CRITICAL memory usage on {{ $labels.pod }}"
+          description: >
+            Pod {{ $labels.pod }} is consuming {{ $value | humanize1024 }}B.
+            Immediate action required – possible OOMKill imminent.
+
+      # ---- High Error Rate ----
+      - alert: HighErrorRate
+        expr: rate(aegis_errors_total[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          team: devops
+        annotations:
+          summary: "High error rate on {{ $labels.pod }}"
+          description: >
+            Error rate is {{ $value }} errors/sec over the last 5 minutes.
+
+      # ---- High Latency ----
+      - alert: HighRequestLatency
+        expr: histogram_quantile(0.95, rate(aegis_http_request_duration_seconds_bucket[5m])) > 2
+        for: 3m
+        labels:
+          severity: warning
+          team: devops
+        annotations:
+          summary: "P95 latency exceeds 2s on {{ $labels.pod }}"
+          description: >
+            The 95th percentile request latency is {{ $value }}s,
+            exceeding the 2-second SLO threshold.
+
+      # ---- Pod Crash Looping ----
+      - alert: PodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total{namespace="aegis-ops"}[15m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          team: devops
+        annotations:
+          summary: "Pod {{ $labels.pod }} is crash-looping"
+          description: >
+            Pod {{ $labels.pod }} has restarted
+            {{ $value | humanize }} times in the last 15 minutes.
+
+  - name: aegis-ops-infrastructure
+    rules:
+      # ---- High CPU on Nodes ----
+      - alert: HighNodeCPU
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: infra
+        annotations:
+          summary: "High CPU on node {{ $labels.instance }}"
+          description: "Node CPU usage is at {{ $value }}%"
+
+      # ---- Node Memory Pressure ----
+      - alert: NodeMemoryPressure
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+          team: infra
+        annotations:
+          summary: "Node {{ $labels.instance }} under memory pressure"
+          description: "Node memory usage is at {{ $value }}%"
+
+      # ---- Disk Space Low ----
+      - alert: DiskSpaceLow
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          team: infra
+        annotations:
+          summary: "Low disk space on node {{ $labels.instance }}"
+          description: "Disk usage is at {{ $value }}%"

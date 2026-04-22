@@ -1,0 +1,217 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Self-Healing Events",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Aegis-Ops Self-Healing Infrastructure Dashboard",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "🏥 Application Health Overview",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "title": "Total HTTP Requests",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum(rate(aegis_http_requests_total[5m]))",
+          "legendFormat": "req/s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 100 }
+            ]
+          },
+          "unit": "reqps"
+        }
+      }
+    },
+    {
+      "title": "Error Rate",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum(rate(aegis_errors_total[5m]))",
+          "legendFormat": "errors/s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.1 },
+              { "color": "red", "value": 0.5 }
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "title": "Memory Usage (MB)",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "expr": "aegis_app_memory_usage_bytes / 1024 / 1024",
+          "legendFormat": "{{ pod }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 150 },
+              { "color": "red", "value": 300 }
+            ]
+          },
+          "unit": "decmbytes"
+        }
+      }
+    },
+    {
+      "title": "Active Connections",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "targets": [
+        {
+          "expr": "aegis_active_connections",
+          "legendFormat": "{{ pod }}"
+        }
+      ]
+    },
+    {
+      "title": "📊 Memory Usage Over Time",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "targets": [
+        {
+          "expr": "aegis_app_memory_usage_bytes / 1024 / 1024",
+          "legendFormat": "{{ pod }} Memory (MB)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "thresholdsStyle": { "mode": "line+area" }
+          },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 200 },
+              { "color": "red", "value": 400 }
+            ]
+          },
+          "unit": "decmbytes"
+        }
+      }
+    },
+    {
+      "title": "📈 Request Rate & Errors",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "targets": [
+        {
+          "expr": "sum(rate(aegis_http_requests_total[1m])) by (status)",
+          "legendFormat": "Status {{ status }}"
+        },
+        {
+          "expr": "sum(rate(aegis_errors_total[1m]))",
+          "legendFormat": "Errors"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "unit": "reqps"
+        }
+      }
+    },
+    {
+      "title": "⏱️ Request Latency (P95)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(aegis_http_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "P95 Latency"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(aegis_http_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "P50 Latency"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15
+          },
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "title": "🩹 Self-Healing Events Log",
+      "type": "table",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+      "targets": [
+        {
+          "expr": "changes(aegis_app_memory_usage_bytes[1h])",
+          "legendFormat": "Memory Changes"
+        }
+      ],
+      "description": "This panel tracks automated self-healing events. Annotations are added by the AI Agent after each remediation action."
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["aegis-ops", "self-healing", "aiops"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Aegis-Ops: Self-Healing Infrastructure",
+  "uid": "aegis-ops-main",
+  "version": 1
+}

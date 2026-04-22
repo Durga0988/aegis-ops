@@ -1,0 +1,16 @@
+# Aegis-Ops Namespaces
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aegis-ops
+  labels:
+    project: aegis-ops
+    managed-by: helm
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    project: aegis-ops
+    component: monitoring

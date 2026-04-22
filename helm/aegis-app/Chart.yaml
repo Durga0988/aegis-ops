@@ -1,0 +1,15 @@
+apiVersion: v2
+name: aegis-app
+description: Aegis-Ops Self-Healing Microservice Helm Chart
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Durga Prasad
+    email: durga@aegis-ops.dev
+keywords:
+  - aegis-ops
+  - self-healing
+  - kubernetes
+  - devops
+  - aiops

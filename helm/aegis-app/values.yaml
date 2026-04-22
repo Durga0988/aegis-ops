@@ -1,0 +1,100 @@
+# =============================================================================
+# Aegis-Ops: Helm Values
+# =============================================================================
+# These values are dynamically updated by:
+#   1. The CI/CD pipeline (image tag on every push)
+#   2. The Self-Healing Action (memory/replicas on incident)
+# =============================================================================
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/Durga0988/aegis-ops/aegis-app
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+nameOverride: ""
+fullnameOverride: "aegis-app"
+
+serviceAccount:
+  create: true
+  name: "aegis-app-sa"
+
+# ---------------------------------------------------------------------------
+# Pod Resources – modified by the self-healing action on memory alerts
+# ---------------------------------------------------------------------------
+resources:
+  limits:
+    cpu: "500m"
+    memory: "256Mi"
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+
+# ---------------------------------------------------------------------------
+# Service
+# ---------------------------------------------------------------------------
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: aegis-ops.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# ---------------------------------------------------------------------------
+# Probes (matching /health and /ready endpoints in the app)
+# ---------------------------------------------------------------------------
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# ---------------------------------------------------------------------------
+# Horizontal Pod Autoscaler
+# ---------------------------------------------------------------------------
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# ---------------------------------------------------------------------------
+# Prometheus Annotations (for auto-discovery by Prometheus)
+# ---------------------------------------------------------------------------
+prometheus:
+  scrape: true
+  port: 8000
+  path: /metrics
+
+# ---------------------------------------------------------------------------
+# Environment Variables
+# ---------------------------------------------------------------------------
+env:
+  APP_PORT: "8000"
+  LOG_LEVEL: "INFO"

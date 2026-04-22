@@ -1,0 +1,212 @@
+# =============================================================================
+# Aegis-Ops: CI/CD Pipeline  (Stage 1 of the Architecture)
+# =============================================================================
+# Flow: Code Push/PR → Static Analysis & Linting (Super-Linter) →
+#       Security Scan (Trivy) → Multi-Stage Docker Build →
+#       Push to GHCR → Update Helm Chart → GitOps Deployment
+# =============================================================================
+
+name: "Aegis-Ops CI/CD Pipeline"
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "app/**"
+      - "helm/**"
+      - ".github/workflows/ci-cd-pipeline.yml"
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/aegis-app
+  HELM_CHART_PATH: helm/aegis-app
+
+jobs:
+  # =========================================================================
+  # JOB 1: Static Analysis & Linting  (Super-Linter)
+  # =========================================================================
+  lint:
+    name: "🔍 Static Analysis & Linting"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      statuses: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history for Super-Linter
+
+      - name: Run Super-Linter
+        uses: super-linter/super-linter@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BRANCH: main
+          VALIDATE_PYTHON_FLAKE8: true
+          VALIDATE_DOCKERFILE_HADOLINT: true
+          VALIDATE_YAML: true
+          VALIDATE_JSON: true
+          VALIDATE_MARKDOWN: true
+          FILTER_REGEX_INCLUDE: .*app/.*
+          PYTHON_FLAKE8_CONFIG_FILE: .flake8
+          LOG_LEVEL: WARN
+
+  # =========================================================================
+  # JOB 2: Security Scanning  (Trivy)
+  # =========================================================================
+  security-scan:
+    name: "🛡️ Security Scan (Trivy)"
+    runs-on: ubuntu-latest
+    needs: lint
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy Filesystem Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "./app"
+          format: "sarif"
+          output: "trivy-fs-results.sarif"
+          severity: "CRITICAL,HIGH"
+
+      - name: Upload Trivy Results to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: "trivy-fs-results.sarif"
+
+  # =========================================================================
+  # JOB 3: Build & Push Docker Image to GHCR
+  # =========================================================================
+  build-and-push:
+    name: "🐳 Docker Build & Push to GHCR"
+    runs-on: ubuntu-latest
+    needs: security-scan
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+      image_digest: ${{ steps.build-push.outputs.digest }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and Push Multi-Stage Docker Image
+        id: build-push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./app
+          file: ./app/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      # ---- Scan the built image with Trivy ----
+      - name: Scan Built Image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: "table"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+
+  # =========================================================================
+  # JOB 4: Update Helm Chart & GitOps Deployment
+  # =========================================================================
+  deploy:
+    name: "🚀 Update Helm Chart & Deploy"
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Helm values.yaml with new image tag
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "Updating Helm chart image tag to: ${SHORT_SHA}"
+          sed -i "s|tag:.*|tag: \"${SHORT_SHA}\"|g" ${{ env.HELM_CHART_PATH }}/values.yaml
+          cat ${{ env.HELM_CHART_PATH }}/values.yaml
+
+      - name: Commit & Push Helm Chart Update
+        run: |
+          git config user.name "aegis-ops-bot"
+          git config user.email "aegis-ops-bot@users.noreply.github.com"
+          git add ${{ env.HELM_CHART_PATH }}/values.yaml
+          git diff --staged --quiet || git commit -m "chore(helm): update image tag to ${{ github.sha }}"
+          git push
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.14.0"
+
+      - name: Deploy to Kubernetes (GitOps - Helm Upgrade)
+        run: |
+          echo "============================================"
+          echo " GitOps Deployment via Helm"
+          echo "============================================"
+          echo "In production, this step would run:"
+          echo "  helm upgrade --install aegis-app ${{ env.HELM_CHART_PATH }} \\"
+          echo "    --namespace aegis-ops \\"
+          echo "    --create-namespace \\"
+          echo "    --wait --timeout 300s"
+          echo ""
+          echo "For local testing with Minikube, run:"
+          echo "  minikube start"
+          echo "  helm upgrade --install aegis-app ./helm/aegis-app -n aegis-ops --create-namespace"
+          echo "============================================"
+
+      - name: Deployment Summary
+        run: |
+          echo "### ✅ Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tag | \`$(echo ${{ github.sha }} | cut -c1-7)\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Helm Chart | \`${{ env.HELM_CHART_PATH }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Namespace | \`aegis-ops\` |" >> $GITHUB_STEP_SUMMARY

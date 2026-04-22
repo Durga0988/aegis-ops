@@ -1,0 +1,72 @@
+# K8s Deployment for the AI Agent inside the cluster
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aegis-ai-agent
+  namespace: aegis-ops
+  labels:
+    app: aegis-ai-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aegis-ai-agent
+  template:
+    metadata:
+      labels:
+        app: aegis-ai-agent
+    spec:
+      serviceAccountName: aegis-ai-agent
+      containers:
+        - name: ai-agent
+          image: ghcr.io/Durga0988/aegis-ops/aegis-ai-agent:latest
+          ports:
+            - containerPort: 5000
+          env:
+            - name: K8S_NAMESPACE
+              value: "aegis-ops"
+            - name: GITHUB_REPO
+              value: "Durga0988/aegis-ops"
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: aegis-secrets
+                  key: github-token
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aegis-secrets
+                  key: openai-api-key
+                  optional: true
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: aegis-secrets
+                  key: slack-webhook-url
+                  optional: true
+            - name: DISCORD_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: aegis-secrets
+                  key: discord-webhook-url
+                  optional: true
+          resources:
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aegis-ai-agent
+  namespace: aegis-ops
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5000
+      targetPort: 5000
+  selector:
+    app: aegis-ai-agent
