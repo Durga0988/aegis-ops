@@ -4,7 +4,11 @@ Sends alert metadata + K8s logs to an LLM for Root Cause Analysis.
 Supports: OpenAI, Ollama (local), and rule-based fallback.
 """
 
-import os, json, logging, httpx
+import os
+import json
+import logging
+
+import httpx
 
 logger = logging.getLogger("aegis-ai-agent.rca")
 
@@ -41,17 +45,35 @@ class RootCauseAnalyzer:
 
     def _build_prompt(self, alert_name, severity, description, pod_name, logs) -> str:
         truncated = logs[-4000:] if len(logs) > 4000 else logs
-        return f"Alert: {alert_name}\nSeverity: {severity}\nDescription: {description}\nPod: {pod_name}\n\nLogs:\n```\n{truncated}\n```"
+        return (
+            f"Alert: {alert_name}\nSeverity: {severity}\n"
+            f"Description: {description}\nPod: {pod_name}\n\n"
+            f"Logs:\n```\n{truncated}\n```"
+        )
 
     def _call_openai(self, user_prompt: str) -> dict | None:
         try:
             with httpx.Client(timeout=30.0) as c:
-                r = c.post("https://api.openai.com/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-                    json={"model": self.model, "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user_prompt}], "temperature": 0.2, "max_tokens": 500})
+                r = c.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": self.model,
+                        "messages": [
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                        "temperature": 0.2,
+                        "max_tokens": 500,
+                    },
+                )
                 r.raise_for_status()
                 content = r.json()["choices"][0]["message"]["content"].strip()
-                if content.startswith("```"): content = content.split("\n", 1)[1].rsplit("```", 1)[0]
+                if content.startswith("```"):
+                    content = content.split("\n", 1)[1].rsplit("```", 1)[0]
                 return json.loads(content)
         except Exception as e:
             logger.error("OpenAI failed: %s", e)
@@ -60,8 +82,15 @@ class RootCauseAnalyzer:
     def _call_ollama(self, user_prompt: str) -> dict | None:
         try:
             with httpx.Client(timeout=60.0) as c:
-                r = c.post(f"{self.ollama_url}/api/generate",
-                    json={"model": self.ollama_model, "prompt": f"{SYSTEM_PROMPT}\n\n{user_prompt}", "stream": False, "format": "json"})
+                r = c.post(
+                    f"{self.ollama_url}/api/generate",
+                    json={
+                        "model": self.ollama_model,
+                        "prompt": f"{SYSTEM_PROMPT}\n\n{user_prompt}",
+                        "stream": False,
+                        "format": "json",
+                    },
+                )
                 r.raise_for_status()
                 return json.loads(r.json().get("response", ""))
         except Exception as e:
@@ -71,22 +100,40 @@ class RootCauseAnalyzer:
     def _rule_based_analysis(self, alert_name: str, severity: str, logs: str) -> dict:
         al, ll = alert_name.lower(), logs.lower()
         if "memory" in al or "oom" in ll:
-            return {"root_cause": "High memory – possible leak", "category": "memory_leak",
-                    "action": "scale_up" if severity == "critical" else "restart", "confidence": 75,
-                    "explanation": "Memory alert detected, recommending resource adjustment", "risk_level": "medium"}
+            return {
+                "root_cause": "High memory – possible leak", "category": "memory_leak",
+                "action": "scale_up" if severity == "critical" else "restart",
+                "confidence": 75,
+                "explanation": "Memory alert detected, recommending resource adjustment",
+                "risk_level": "medium",
+            }
         if "cpu" in al or "throttl" in ll:
-            return {"root_cause": "CPU throttling detected", "category": "cpu_spike",
-                    "action": "scale_up", "confidence": 70, "explanation": "CPU alert, scaling up", "risk_level": "medium"}
+            return {
+                "root_cause": "CPU throttling detected", "category": "cpu_spike",
+                "action": "scale_up", "confidence": 70,
+                "explanation": "CPU alert, scaling up", "risk_level": "medium",
+            }
         if "crash" in al or "backoff" in ll:
-            return {"root_cause": "Pod crash-looping", "category": "crash_loop",
-                    "action": "rollback", "confidence": 80, "explanation": "Crash loop, rolling back", "risk_level": "high"}
+            return {
+                "root_cause": "Pod crash-looping", "category": "crash_loop",
+                "action": "rollback", "confidence": 80,
+                "explanation": "Crash loop, rolling back", "risk_level": "high",
+            }
         if "latency" in al or "slow" in ll:
-            return {"root_cause": "Request latency spike", "category": "network_error",
-                    "action": "scale_up", "confidence": 70, "explanation": "Latency detected, scaling to improve performance", "risk_level": "medium"}
+            return {
+                "root_cause": "Request latency spike", "category": "network_error",
+                "action": "scale_up", "confidence": 70,
+                "explanation": "Latency detected, scaling to improve performance",
+                "risk_level": "medium",
+            }
         if "error" in al:
-            return {"root_cause": "High error rate", "category": "configuration_error",
-                    "action": "restart", "confidence": 65, "explanation": "Error rate spike, restarting", "risk_level": "medium"}
-        return {"root_cause": f"Unknown: {alert_name}", "category": "unknown",
-                "action": "none", "confidence": 30, "explanation": "Needs human investigation", "risk_level": "high"}
-
-
+            return {
+                "root_cause": "High error rate", "category": "configuration_error",
+                "action": "restart", "confidence": 65,
+                "explanation": "Error rate spike, restarting", "risk_level": "medium",
+            }
+        return {
+            "root_cause": f"Unknown: {alert_name}", "category": "unknown",
+            "action": "none", "confidence": 30,
+            "explanation": "Needs human investigation", "risk_level": "high",
+        }

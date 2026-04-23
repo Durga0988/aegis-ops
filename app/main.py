@@ -9,7 +9,6 @@ import time
 import logging
 import psutil
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
 from prometheus_client import (
     Counter,
     Histogram,
@@ -74,9 +73,9 @@ async def _update_memory_gauge():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Aegis-Ops application starting up ...")
+    logger.info("Aegis-Ops application starting up …")
     yield
-    logger.info("Aegis-Ops application shutting down ...")
+    logger.info("Aegis-Ops application shutting down …")
 
 
 # ---------------------------------------------------------------------------
@@ -234,5 +233,3 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("APP_PORT", "8000")),
     )
-
-

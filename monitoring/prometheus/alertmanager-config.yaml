@@ -6,6 +6,7 @@
 #   2. Slack/Discord (secondary – for team notification)
 # =============================================================================
 
+---
 global:
   resolve_timeout: 5m
   smtp_from: "aegis-ops@alerts.dev"

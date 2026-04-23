@@ -1,4 +1,5 @@
 # K8s Deployment for the AI Agent inside the cluster
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:

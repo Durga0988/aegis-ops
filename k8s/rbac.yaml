@@ -1,4 +1,5 @@
 # RBAC for the AI Agent to read pods/logs in the aegis-ops namespace
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:

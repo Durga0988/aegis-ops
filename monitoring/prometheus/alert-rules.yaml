@@ -5,6 +5,7 @@
 # When an alert fires, Alertmanager sends a webhook POST to the AI Agent.
 # =============================================================================
 
+---
 groups:
   - name: aegis-ops-application
     rules:

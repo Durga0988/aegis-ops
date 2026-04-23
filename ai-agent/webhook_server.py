@@ -9,11 +9,9 @@ This is the central "brain" of the Aegis-Ops self-healing pipeline.
 """
 
 import os
-import json
 import logging
 from datetime import datetime, timezone
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 
@@ -288,5 +286,4 @@ if __name__ == "__main__":
         port=int(os.getenv("AGENT_PORT", "5000")),
         reload=False,
     )
-
 
