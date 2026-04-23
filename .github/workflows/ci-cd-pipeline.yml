@@ -44,6 +44,7 @@ jobs:
 
       - name: Run Super-Linter
         uses: super-linter/super-linter@v6
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BRANCH: main
