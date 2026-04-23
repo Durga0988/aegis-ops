@@ -39,7 +39,7 @@ echo "✅ Application deployed via Helm"
 echo ""
 echo "Deploying AI Agent..."
 # Update the image reference for local dev
-sed 's|ghcr.io/YOUR_USERNAME/aegis-ops/aegis-ai-agent:latest|aegis-ai-agent:latest|' \
+sed 's|ghcr.io/Durga0988/aegis-ops/aegis-ai-agent:latest|aegis-ai-agent:latest|' \
     k8s/ai-agent-deployment.yaml | kubectl apply -f -
 echo "✅ AI Agent deployed"
 

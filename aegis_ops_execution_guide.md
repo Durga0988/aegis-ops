@@ -35,13 +35,15 @@ winget install Git.Git
 ```
 
 > [!IMPORTANT]
-> After installing, **restart your terminal** so all commands are on PATH. Verify with:
-> ```powershell
-> docker --version
-> minikube version
-> kubectl version --client
-> helm version
-> ```
+> After installing, **restart your terminal** so all commands are on PATH.
+
+Verify with:
+```powershell
+docker --version
+minikube version
+kubectl version --client
+helm version
+```
 
 ---
 

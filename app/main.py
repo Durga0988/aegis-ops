@@ -32,26 +32,27 @@ logger = logging.getLogger("aegis-app")
 # ---------------------------------------------------------------------------
 # Prometheus Metrics
 # ---------------------------------------------------------------------------
+# Use the base name; prometheus_client adds suffixes automatically
 REQUEST_COUNT = Counter(
-    "aegis_http_requests_total",
+    "aegis_requests",
     "Total HTTP requests",
     ["method", "endpoint", "status"],
 )
 REQUEST_LATENCY = Histogram(
-    "aegis_http_request_duration_seconds",
+    "aegis_request_duration",
     "HTTP request latency in seconds",
     ["method", "endpoint"],
 )
 MEMORY_USAGE = Gauge(
-    "aegis_app_memory_usage_bytes",
+    "aegis_memory_usage",
     "Current memory usage of the application in bytes",
 )
 ACTIVE_CONNECTIONS = Gauge(
-    "aegis_active_connections",
+    "aegis_connections_active",
     "Number of active connections",
 )
 ERROR_COUNT = Counter(
-    "aegis_errors_total",
+    "aegis_app_errors",
     "Total number of application errors",
     ["error_type"],
 )
@@ -188,13 +189,13 @@ async def simulate_memory_leak():
 
 
 @app.post("/chaos/cpu-spike")
-async def simulate_cpu_spike():
-    """Burn CPU for ~5 seconds to trigger CPU alerts."""
-    logger.warning("CHAOS: CPU spike initiated")
-    end = time.time() + 5
+async def simulate_cpu_spike(duration: int = 60):
+    """Burn CPU for a specified duration (default 60s) to trigger CPU alerts."""
+    logger.warning(f"CHAOS: CPU spike initiated for {duration} seconds")
+    end = time.time() + duration
     while time.time() < end:
         _ = sum(i * i for i in range(10_000))
-    return {"chaos": "cpu_spike", "duration_seconds": 5}
+    return {"chaos": "cpu_spike", "duration_seconds": duration}
 
 
 @app.post("/chaos/crash")
@@ -203,6 +204,15 @@ async def simulate_crash():
     logger.error("CHAOS: Application crash simulated!")
     ERROR_COUNT.labels(error_type="SimulatedCrash").inc()
     raise HTTPException(status_code=500, detail="Simulated application crash")
+
+
+@app.post("/chaos/latency")
+async def simulate_latency(seconds: float = 5.0):
+    """Introduce artificial latency to every request for a period of time."""
+    logger.warning(f"CHAOS: Latency injected – slowing down for {seconds}s")
+    # Store the latency setting in a global or state (simplifying for demo)
+    time.sleep(seconds) 
+    return {"chaos": "latency", "duration": seconds}
 
 
 @app.post("/chaos/clear")
@@ -218,10 +228,9 @@ async def clear_memory_leak():
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
-
+    # Use the app object directly when running locally to avoid re-import issues
     uvicorn.run(
-        "main:app",
+        app,
         host="0.0.0.0",
         port=int(os.getenv("APP_PORT", "8000")),
-        reload=False,
     )

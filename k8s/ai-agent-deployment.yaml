@@ -19,7 +19,8 @@ spec:
       serviceAccountName: aegis-ai-agent
       containers:
         - name: ai-agent
-          image: ghcr.io/Durga0988/aegis-ops/aegis-ai-agent:latest
+          image: aegis-ai-agent:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 5000
           env:
@@ -31,24 +32,24 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: aegis-secrets
-                  key: github-token
+                  key: GITHUB_TOKEN
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: aegis-secrets
-                  key: openai-api-key
+                  key: OPENAI_API_KEY
                   optional: true
             - name: SLACK_WEBHOOK_URL
               valueFrom:
                 secretKeyRef:
                   name: aegis-secrets
-                  key: slack-webhook-url
+                  key: SLACK_WEBHOOK_URL
                   optional: true
             - name: DISCORD_WEBHOOK_URL
               valueFrom:
                 secretKeyRef:
                   name: aegis-secrets
-                  key: discord-webhook-url
+                  key: DISCORD_WEBHOOK_URL
                   optional: true
           resources:
             limits:

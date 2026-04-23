@@ -10,8 +10,8 @@ groups:
     rules:
       # ---- Memory Leak Detection ----
       - alert: HighMemoryUsage
-        expr: aegis_app_memory_usage_bytes > 200 * 1024 * 1024
-        for: 1m
+        expr: aegis_memory_usage > 200 * 1024 * 1024
+        for: 10s
         labels:
           severity: warning
           team: devops
@@ -24,7 +24,7 @@ groups:
           runbook_url: "https://aegis-ops.dev/runbooks/high-memory"
 
       - alert: CriticalMemoryUsage
-        expr: aegis_app_memory_usage_bytes > 400 * 1024 * 1024
+        expr: aegis_memory_usage > 400 * 1024 * 1024
         for: 30s
         labels:
           severity: critical
@@ -35,9 +35,20 @@ groups:
             Pod {{ $labels.pod }} is consuming {{ $value | humanize1024 }}B.
             Immediate action required – possible OOMKill imminent.
 
+      # ---- High CPU Usage ----
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total{namespace="aegis-ops", pod=~"aegis-app-.*"}[1m]) * 100 > 80
+        for: 10s
+        labels:
+          severity: warning
+          team: devops
+        annotations:
+          summary: "High CPU usage on {{ $labels.pod }}"
+          description: "Pod {{ $labels.pod }} is using > 80% CPU."
+
       # ---- High Error Rate ----
       - alert: HighErrorRate
-        expr: rate(aegis_errors_total[5m]) > 0.5
+        expr: rate(aegis_app_errors_total[5m]) > 0.5
         for: 2m
         labels:
           severity: warning
@@ -49,8 +60,8 @@ groups:
 
       # ---- High Latency ----
       - alert: HighRequestLatency
-        expr: histogram_quantile(0.95, rate(aegis_http_request_duration_seconds_bucket[5m])) > 2
-        for: 3m
+        expr: histogram_quantile(0.95, rate(aegis_request_duration_bucket[5m])) > 1
+        for: 10s
         labels:
           severity: warning
           team: devops

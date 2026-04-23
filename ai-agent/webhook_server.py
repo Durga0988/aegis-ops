@@ -35,7 +35,7 @@ logger = logging.getLogger("aegis-ai-agent")
 # Configuration (from environment variables)
 # ---------------------------------------------------------------------------
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
-GITHUB_REPO = os.getenv("GITHUB_REPO", "YOUR_USERNAME/aegis-ops")
+GITHUB_REPO = os.getenv("GITHUB_REPO", "Durga0988/aegis-ops")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL", "")
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
@@ -89,7 +89,7 @@ class AlertManagerPayload(BaseModel):
     commonLabels: dict = {}
     commonAnnotations: dict = {}
     externalURL: str = ""
-    alerts: list = []
+    alerts: list[dict] = []
 
 
 class HealingResponse(BaseModel):
@@ -135,6 +135,11 @@ async def receive_alert(payload: AlertManagerPayload):
     results: list[HealingResponse] = []
 
     for alert in payload.alerts:
+        # Safety check: ensure alert is a dictionary
+        if not isinstance(alert, dict):
+            logger.warning("Expected alert to be a dictionary, but got %s", type(alert))
+            continue
+
         if alert.get("status") != "firing":
             logger.info("Skipping resolved alert: %s", alert.get("labels", {}).get("alertname"))
             continue

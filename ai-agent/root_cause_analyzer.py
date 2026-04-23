@@ -80,6 +80,9 @@ class RootCauseAnalyzer:
         if "crash" in al or "backoff" in ll:
             return {"root_cause": "Pod crash-looping", "category": "crash_loop",
                     "action": "rollback", "confidence": 80, "explanation": "Crash loop, rolling back", "risk_level": "high"}
+        if "latency" in al or "slow" in ll:
+            return {"root_cause": "Request latency spike", "category": "network_error",
+                    "action": "scale_up", "confidence": 70, "explanation": "Latency detected, scaling to improve performance", "risk_level": "medium"}
         if "error" in al:
             return {"root_cause": "High error rate", "category": "configuration_error",
                     "action": "restart", "confidence": 65, "explanation": "Error rate spike, restarting", "risk_level": "medium"}

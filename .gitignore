@@ -1,10 +1,20 @@
-# Aegis-Ops Project
-.env
-*.env
+# Python
 __pycache__/
-*.pyc
-.venv/
+*.py[cod]
+*$py.class
 venv/
-node_modules/
+.env
+
+# Kubernetes/Local
+.kube/
+minikube/
+*.log
+
+# Secrets (IMPORTANT)
+**/*secrets.yaml
+**/*-secret.yaml
+
+# IDE
+.vscode/
+.idea/
 .DS_Store
-Thumbs.db

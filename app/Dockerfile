@@ -20,7 +20,7 @@ FROM python:3.12-slim AS runtime
 LABEL org.opencontainers.image.title="aegis-ops-app" \
       org.opencontainers.image.description="Aegis-Ops Self-Healing Microservice" \
       org.opencontainers.image.version="1.0.0" \
-      org.opencontainers.image.source="https://github.com/YOUR_USERNAME/aegis-ops"
+      org.opencontainers.image.source="https://github.com/Durga0988/aegis-ops"
 
 # Create non-root user for security
 RUN groupadd -r aegis && useradd -r -g aegis aegis
