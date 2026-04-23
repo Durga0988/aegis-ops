@@ -32,8 +32,8 @@ class Notifier:
     ):
         """Send incident report to all configured channels."""
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-        status_emoji = "🔥" if severity == "critical" else "⚠️"
-        action_emoji = "✅" if github_triggered else "⏸️"
+        status_emoji = "�"�" if severity == "critical" else "⚠️"
+        action_emoji = "�..." if github_triggered else "⏸️"
 
         if self.slack_url:
             await self._send_slack(
@@ -78,7 +78,7 @@ class Notifier:
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"*🔍 Root Cause:*\n{root_cause}",
+                        "text": f"*�"� Root Cause:*\n{root_cause}",
                     },
                 },
                 {
@@ -94,7 +94,7 @@ class Notifier:
                         "type": "mrkdwn",
                         "text": (
                             f"{action_emoji} *Action Taken:* `{action}`\n"
-                            f"*GitHub Action Triggered:* {'Yes ✅' if github_triggered else 'No ❌'}\n"
+                            f"*GitHub Action Triggered:* {'Yes �...' if github_triggered else 'No ❌'}\n"
                             f"*Time:* {timestamp}"
                         ),
                     },
@@ -125,11 +125,11 @@ class Notifier:
                         {"name": "Alert", "value": alert_name, "inline": True},
                         {"name": "Severity", "value": severity.upper(), "inline": True},
                         {"name": "Pod", "value": f"`{pod_name}`", "inline": True},
-                        {"name": "🔍 Root Cause", "value": root_cause, "inline": False},
+                        {"name": "�"� Root Cause", "value": root_cause, "inline": False},
                         {"name": "📋 Explanation", "value": explanation, "inline": False},
                         {"name": f"{action_emoji} Action", "value": f"`{action}`", "inline": True},
                         {"name": "Confidence", "value": f"{confidence}%", "inline": True},
-                        {"name": "Auto-Healed", "value": "Yes ✅" if github_triggered else "No ❌", "inline": True},
+                        {"name": "Auto-Healed", "value": "Yes �..." if github_triggered else "No ❌", "inline": True},
                     ],
                     "footer": {"text": f"Aegis-Ops AI Agent • {timestamp}"},
                 }
@@ -143,3 +143,5 @@ class Notifier:
                 logger.info("Discord notification sent")
         except Exception as e:
             logger.error("Discord notification failed: %s", e)
+
+

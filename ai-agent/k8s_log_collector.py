@@ -196,3 +196,5 @@ class K8sLogCollector:
         except Exception as e:
             logger.error("Failed to get deployment info: %s", str(e))
             return {"error": str(e)}
+
+

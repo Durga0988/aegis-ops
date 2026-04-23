@@ -78,7 +78,7 @@ class HealingEngine:
 
                 if response.status_code == 204:
                     logger.info(
-                        "âœ… Self-healing GitHub Action triggered: action=%s",
+                        "âœ... Self-healing GitHub Action triggered: action=%s",
                         action,
                     )
                     return True
@@ -116,3 +116,5 @@ class HealingEngine:
         except Exception as e:
             logger.error("Failed to check workflow status: %s", str(e))
             return {"error": str(e)}
+
+

@@ -88,3 +88,5 @@ class RootCauseAnalyzer:
                     "action": "restart", "confidence": 65, "explanation": "Error rate spike, restarting", "risk_level": "medium"}
         return {"root_cause": f"Unknown: {alert_name}", "category": "unknown",
                 "action": "none", "confidence": 30, "explanation": "Needs human investigation", "risk_level": "high"}
+
+

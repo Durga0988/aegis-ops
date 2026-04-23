@@ -74,9 +74,9 @@ async def _update_memory_gauge():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Aegis-Ops application starting up …")
+    logger.info("Aegis-Ops application starting up ...")
     yield
-    logger.info("Aegis-Ops application shutting down …")
+    logger.info("Aegis-Ops application shutting down ...")
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +211,7 @@ async def simulate_latency(seconds: float = 5.0):
     """Introduce artificial latency to every request for a period of time."""
     logger.warning(f"CHAOS: Latency injected – slowing down for {seconds}s")
     # Store the latency setting in a global or state (simplifying for demo)
-    time.sleep(seconds) 
+    time.sleep(seconds)
     return {"chaos": "latency", "duration": seconds}
 
 
@@ -234,3 +234,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("APP_PORT", "8000")),
     )
+
+
