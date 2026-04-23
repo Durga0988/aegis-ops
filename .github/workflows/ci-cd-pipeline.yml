@@ -52,7 +52,7 @@ jobs:
           VALIDATE_YAML: true
           VALIDATE_JSON: true
           VALIDATE_MARKDOWN: true
-          FILTER_REGEX_INCLUDE: .*app/.*
+          YAML_CONFIG_FILE: .yamllint
           PYTHON_FLAKE8_CONFIG_FILE: .flake8
           LOG_LEVEL: WARN
 
