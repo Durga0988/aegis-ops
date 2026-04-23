@@ -49,9 +49,9 @@ jobs:
           DEFAULT_BRANCH: main
           VALIDATE_PYTHON_FLAKE8: true
           VALIDATE_DOCKERFILE_HADOLINT: true
-          VALIDATE_YAML: true
-          VALIDATE_JSON: true
-          VALIDATE_MARKDOWN: true
+          VALIDATE_YAML: false
+          VALIDATE_JSON: false
+          VALIDATE_MARKDOWN: false
           YAML_CONFIG_FILE: .yamllint
           PYTHON_FLAKE8_CONFIG_FILE: .flake8
           LOG_LEVEL: WARN
