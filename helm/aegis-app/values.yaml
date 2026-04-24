@@ -12,7 +12,7 @@ replicaCount: 2
 image:
   repository: ghcr.io/Durga0988/aegis-ops/aegis-app
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: "3b9edcd"
 
 nameOverride: ""
 fullnameOverride: "aegis-app"
